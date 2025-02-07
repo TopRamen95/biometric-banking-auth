@@ -14,10 +14,10 @@ def register(request):
     serializer = UserSerializer(data=request.data)
     if serializer.is_valid():
         serializer.save()
-        return Response({'message': 'User registered successfully'}, status=201)
+        return Response({'message': 'User registered successfully'})
     return Response(serializer.errors, status=400)
 
-# 🔹 Login User & Generate JWT Token
+# 🔹 Login User & Generate JWT Tokens
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def login(request):
@@ -31,40 +31,44 @@ def login(request):
         return Response({
             'refresh': str(refresh),
             'access': str(refresh.access_token),
-            'role': user.is_superuser
-        }, status=200)
+            'message': 'Login successful'
+        })
     
     return Response({'error': 'Invalid credentials'}, status=400)
 
-# 🔹 Get User Profile (Protected)
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def profile(request):
-    user = request.user
-    serializer = UserSerializer(user)
-    return Response(serializer.data, status=200)
-
-# 🔹 Protected Route (Test Auth)
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def protected_route(request):
-    return Response({'message': 'You have accessed a protected route'}, status=200)
-
-# 🔹 Logout User (Blacklist Token)
+# 🔹 Logout (Blacklist Token)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def logout(request):
     try:
         refresh_token = request.data.get('refresh')
-
-        if not refresh_token:
-            return Response({'error': 'Refresh token is required'}, status=400)
-
-        token = RefreshToken(refresh_token)
-        token.blacklist()  # ✅ Blacklist the token
-
-        return Response({'message': 'User logged out successfully'}, status=200)
-
+        if refresh_token:
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response({'message': 'User logged out successfully'}, status=200)
+        return Response({'error': 'Refresh token is required'}, status=400)
     except Exception as e:
-        return Response({'error': 'Invalid or expired token'}, status=400)
+        return Response({'error': 'Invalid token'}, status=400)
 
+# 🔹 Protected User Profile Route (Requires Authentication)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def profile(request):
+    user = request.user
+    serializer = UserSerializer(user)
+    return Response(serializer.data)
+
+# 🔹 A Sample Protected Route
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def protected_route(request):
+    return Response({'message': 'You have accessed a protected route'}, status=200)
+
+# 🔹 Admin-Only Route
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_only_view(request):
+    if not request.user.is_superuser:
+        return Response({"error": "Access denied"}, status=403)
+    
+    return Response({"message": "Welcome, admin!"}, status=200)

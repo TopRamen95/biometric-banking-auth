@@ -92,6 +92,9 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'django_api.wsgi.application'
 
+AUTH_USER_MODEL = 'auth_app.CustomUser'
+
+
 
 # Database
 # https://docs.djangoproject.com/en/5.1/ref/settings/#databases
