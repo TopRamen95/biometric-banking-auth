@@ -72,3 +72,16 @@ def admin_only_view(request):
         return Response({"error": "Access denied"}, status=403)
     
     return Response({"message": "Welcome, admin!"}, status=200)
+
+# 🔹 Update User Profile
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_profile(request):
+    user = request.user
+    serializer = UserSerializer(user, data=request.data, partial=True)
+    
+    if serializer.is_valid():
+        serializer.save()
+        return Response({'message': 'Profile updated successfully', 'user': serializer.data})
+    
+    return Response(serializer.errors, status=400)
