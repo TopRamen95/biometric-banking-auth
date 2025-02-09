@@ -95,10 +95,10 @@ WSGI_APPLICATION = 'django_api.wsgi.application'
 AUTH_USER_MODEL = 'auth_app.CustomUser'
 
 
-# # Internationalization
-# TWILIO_ACCOUNT_SID = "ACc577eff44ecc25918c48ff0e42c5caab"
-# TWILIO_AUTH_TOKEN = "ACc577eff44ecc25918c48ff0e42c5caab"
-# TWILIO_PHONE_NUMBER = "+18312436795"
+# Internationalization
+TWILIO_ACCOUNT_SID = "ACc577eff44ecc25918c48ff0e42c5caab"
+TWILIO_AUTH_TOKEN = "ACc577eff44ecc25918c48ff0e42c5caab"
+TWILIO_PHONE_NUMBER = "+18312436795"
 
 
 
@@ -161,10 +161,10 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # Email Settings for Gmail SMTP
-# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-# EMAIL_HOST = "smtp.gmail.com"  
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = "tradesupply07@gmail.com"  # Replace with your actual email
-# EMAIL_HOST_PASSWORD = "hlgw jnwz lkqj deuq"  # Use the generated App Password
-# EMAIL_USE_SSL = False
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"  
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = "tradesupply07@gmail.com"  # Replace with your actual email
+EMAIL_HOST_PASSWORD = "hlgw jnwz lkqj deuq"  # Use the generated App Password
+EMAIL_USE_SSL = False
