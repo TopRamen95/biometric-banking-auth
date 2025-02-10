@@ -1,7 +1,8 @@
 from django.urls import path
 from .views import (
     register, login, logout, profile, protected_route, admin_only_view,
-    create_transaction, list_transactions, security_logs, upload_biometric_data, request_otp, verify_otp
+    create_transaction, list_transactions, security_logs, upload_biometric_data, 
+    request_otp, verify_otp, upload_face, face_login ,upload_voice ,voice_login
 )
 from rest_framework_simplejwt.views import TokenRefreshView
 
@@ -30,4 +31,11 @@ urlpatterns = [
     # 🔹 OTP Authentication Endpoints
     path("request-otp/", request_otp, name="request_otp"),
     path("verify-otp/", verify_otp, name="verify_otp"),
+
+    # 🔹 Face Recognition Endpoints
+    path('upload-face/', upload_face, name='upload-face'),  # Upload & save face encoding
+    path('face-login/', face_login, name='face-login'),  # Login using face recognition
+    # 🔹 Voice Authentication Routes
+    path('upload-voice/', upload_voice, name='upload_voice'),
+    path('voice-login/', voice_login, name='voice_login'),
 ]

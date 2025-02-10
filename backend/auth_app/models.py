@@ -92,3 +92,5 @@ class OTP(models.Model):
 
     def __str__(self):
         return f"OTP for {self.user.username} - {self.otp_code}"
+
+

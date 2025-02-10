@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import CustomUser, Transaction, SecurityLog
+from .models import CustomUser, Transaction, SecurityLog ,BiometricData
 
 # ✅ User Serializer
 class UserSerializer(serializers.ModelSerializer):
@@ -38,3 +38,10 @@ class SecurityLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = SecurityLog
         fields = ['user', 'action', 'ip_address', 'timestamp']
+
+# ✅ Serializer for Biometric Data
+class BiometricDataSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BiometricData
+        fields = ['face_encoding', 'voice_encoding']  # ✅ Ensure this field is included
+

@@ -7,12 +7,17 @@ from django.utils.timezone import now
 from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import update_last_login
 from .serializers import UserSerializer, TransactionSerializer, SecurityLogSerializer
-from .models import Transaction, SecurityLog
+from .models import Transaction, SecurityLog , BiometricData
 import json
+import face_recognition
 from django.shortcuts import get_object_or_404
 from django.http import JsonResponse
 from .models import OTP
-from .utils import send_email_otp, send_sms_otp
+from .utils import send_email_otp, send_sms_otp ,save_face_encoding ,save_voice_encoding , extract_voice_features
+import numpy as np
+import base64
+from scipy.spatial.distance import cosine
+
 
 User = get_user_model()
 
@@ -221,3 +226,135 @@ def verify_otp(request):
         return JsonResponse({"message": "OTP verified successfully"}, status=200)
 
     return JsonResponse({"error": "Invalid or expired OTP"}, status=400)
+
+# ✅ Upload Face Image for Face Recognition
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_face(request):
+    """API to upload user face image and store encoding"""
+    user = request.user
+    image = request.FILES.get('image')
+
+    if not image:
+        return Response({"error": "No image uploaded"}, status=400)
+
+    success = save_face_encoding(user, image)
+    if not success:
+        return Response({"error": "Face not detected"}, status=400)
+
+    return Response({"message": "Face encoding saved successfully!"}, status=201)
+
+# 🔹 Face Recognition Login
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def face_login(request):
+    """
+    Authenticate user using face recognition.
+    """
+    uploaded_image = request.FILES.get('image')
+    email = request.data.get('email')
+
+    if not uploaded_image or not email:
+        return Response({'error': 'Email and face image are required.'}, status=400)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found.'}, status=404)
+
+    try:
+        biometric_data = BiometricData.objects.get(user=user)
+        stored_encoding = np.frombuffer(base64.b64decode(biometric_data.face_encoding), dtype=np.float64)
+    except BiometricData.DoesNotExist:
+        return Response({'error': 'No face data found for this user.'}, status=404)
+
+    # Encode the uploaded face image
+    uploaded_face = face_recognition.load_image_file(uploaded_image)
+    uploaded_encodings = face_recognition.face_encodings(uploaded_face)
+
+    if not uploaded_encodings:
+        return Response({'error': 'No face detected in the uploaded image.'}, status=400)
+
+    # Compare faces
+    match = face_recognition.compare_faces([stored_encoding], uploaded_encodings[0], tolerance=0.5)
+
+    if match[0]:
+        return Response({'message': 'Face matched. Authentication successful!'}, status=200)
+    else:
+        return Response({'error': 'Face did not match. Authentication failed.'}, status=401)
+
+# ✅ Upload Voice for Authentication
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_voice(request):
+    """API to upload user voice sample and store encoding"""
+    user = request.user
+    audio = request.FILES.get('audio')
+
+    if not audio:
+        return Response({"error": "No audio file uploaded"}, status=400)
+
+    success = save_voice_encoding(user, audio)
+    if not success:
+        return Response({"error": "Voice not detected or encoding failed"}, status=400)
+
+    return Response({"message": "Voice encoding saved successfully!"}, status=201)
+
+
+# 🔹 Voice Authentication Login
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def upload_voice(request):
+    """API to upload user voice sample and store encoding"""
+    user = request.user
+    audio = request.FILES.get('audio')
+
+    if not audio:
+        return Response({"error": "No audio file uploaded"}, status=400)
+
+    success = save_voice_encoding(user, audio)
+    if not success:
+        return Response({"error": "Voice not detected or invalid format"}, status=400)
+
+    return Response({"message": "Voice encoding saved successfully!"}, status=201)
+# 🔹 Voice Authentication Login
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def voice_login(request):
+    """
+    Authenticate user using voice recognition.
+    """
+    uploaded_audio = request.FILES.get('audio')
+    email = request.data.get('email')
+
+    if not uploaded_audio or not email:
+        return Response({'error': 'Email and voice recording are required.'}, status=400)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({'error': 'User not found.'}, status=404)
+
+    try:
+        biometric_data = BiometricData.objects.get(user=user)
+        decoded_data = base64.b64decode(biometric_data.voice_encoding)
+        stored_encoding = np.frombuffer(decoded_data, dtype=np.float32)  # Change to float32
+
+    except BiometricData.DoesNotExist:
+        return Response({'error': 'No voice data found for this user.'}, status=404)
+
+    # Extract voice features from uploaded audio
+    uploaded_features = extract_voice_features(uploaded_audio)
+    if uploaded_features is None:
+        return Response({'error': 'Voice not detected or invalid format'}, status=400)
+
+    # Compare voices using Cosine Similarity
+    similarity = np.dot(stored_encoding, uploaded_features) / (np.linalg.norm(stored_encoding) * np.linalg.norm(uploaded_features))
+
+    if similarity >= 0.75:  # Threshold for match (Adjustable)
+        return Response({'message': 'Voice matched. Authentication successful!'}, status=200)
+    else:
+        return Response({'error': 'Voice did not match. Authentication failed.'}, status=401)
+
+
+
