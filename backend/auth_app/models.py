@@ -1,96 +1,59 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils.timezone import now, timedelta
-import random
-import string
+import uuid
+import base64
 
-# ✅ Custom User Model
+# Custom User Model
 class CustomUser(AbstractUser):
-    groups = models.ManyToManyField(
-        "auth.Group",
-        related_name="customuser_groups",  
-        blank=True
-    )
-    user_permissions = models.ManyToManyField(
-        "auth.Permission",
-        related_name="customuser_permissions",
-        blank=True
-    )
-    phone_number = models.CharField(max_length=15, unique=True, blank=True, null=True)
-    is_verified = models.BooleanField(default=False)  # Email/Phone verification
+    phone_no = models.CharField(max_length=15, unique=True)
+    email = models.EmailField(unique=False, blank=True, null=True)  # Optional in biometric register
+    face_data = models.TextField(blank=True, null=True)  # Base64 Encoded Face Data
+    voice_data = models.TextField(blank=True, null=True)  # Base64 Encoded Voice Data
+    is_admin = models.BooleanField(default=False)
+    is_cashier = models.BooleanField(default=False)
+    is_service_agent = models.BooleanField(default=False)
+
+    def save(self, *args, **kwargs):
+        """Ensure superusers are always admins."""
+        if self.is_superuser:
+            self.is_admin = True
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.username
 
-# ✅ User Profile Model
-class UserProfile(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    address = models.TextField(blank=True, null=True)
-    date_of_birth = models.DateField(blank=True, null=True)
-    account_balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
-    
-    def __str__(self):
-        return f"{self.user.username}'s Profile"
-
-# ✅ Transactions Model
-class Transaction(models.Model):
-    TRANSACTION_TYPES = [
-        ('deposit', 'Deposit'),
-        ('withdrawal', 'Withdrawal'),
-        ('transfer', 'Transfer'),
-    ]
-
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPES)
-    amount = models.DecimalField(max_digits=12, decimal_places=2)
-    timestamp = models.DateTimeField(auto_now_add=True)
-    status = models.CharField(max_length=20, default="pending")  # pending, completed, failed
-
-    def __str__(self):
-        return f"{self.user.username} - {self.transaction_type} - {self.amount}"
-
-# ✅ Security Logs Model
-class SecurityLog(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    ip_address = models.GenericIPAddressField()
-    action = models.CharField(max_length=50)  # e.g., "login_success", "failed_login"
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.user.username} - {self.action} - {self.timestamp}"
-
-# ✅ Biometric Data Model (Face & Voice Authentication)
+# Biometric Data Model
 class BiometricData(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE)
-    face_encoding = models.TextField(blank=True, null=True)  # Base64 or serialized encoding
-    voice_encoding = models.TextField(blank=True, null=True)
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="biometric_data")
+    face_data = models.TextField(blank=True, null=True)  # Base64 Encoded Face Data
+    voice_data = models.TextField(blank=True, null=True)  # Base64 Encoded Voice Data
 
     def __str__(self):
-        return f"Biometric Data for {self.user.username}"
-    
-# ✅ OTP Model
-class OTP(models.Model):
-    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
-    otp_code = models.CharField(max_length=6)
-    created_at = models.DateTimeField(auto_now_add=True)
-    expires_at = models.DateTimeField()
+        return f"Biometric Data of {self.user.username}"
 
-    def is_valid(self):
-        """Check if OTP is still valid."""
-        return now() < self.expires_at  
+# Transaction Model
+class Transaction(models.Model):
+    TRANSACTION_TYPES = [('credit', 'Credit'), ('debit', 'Debit')]
+    PAYMENT_MODES = [('upi', 'UPI'), ('card', 'Card'), ('bank_transfer', 'Bank Transfer')]
 
-    @staticmethod
-    def generate_otp():
-        """Generate a 6-digit OTP."""
-        return ''.join(random.choices(string.digits, k=6))  
-
-    def save(self, *args, **kwargs):
-        """Auto-set expiry time when saving."""
-        if not self.expires_at:
-            self.expires_at = now() + timedelta(minutes=5)  # OTP expires in 5 minutes
-        super().save(*args, **kwargs)
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name="transactions")
+    transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPES)
+    payment_mode = models.CharField(max_length=20, choices=PAYMENT_MODES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    status = models.CharField(max_length=20, choices=[('pending', 'Pending'), ('completed', 'Completed'), ('failed', 'Failed')], default='pending')
 
     def __str__(self):
-        return f"OTP for {self.user.username} - {self.otp_code}"
+        return f"{self.user.username} - {self.amount} - {self.status}"
 
+ 
+# Logs Model
+class Log(models.Model):
+    action = models.CharField(max_length=255)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    performed_by = models.ForeignKey(CustomUser, on_delete=models.CASCADE)
 
+    def __str__(self):
+        return f"{self.performed_by} - {self.action}"
