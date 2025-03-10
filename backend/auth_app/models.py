@@ -3,6 +3,7 @@ from django.db import models
 from django.utils.timezone import now, timedelta
 import uuid
 import base64
+from django.conf import settings
 
 # Custom User Model
 class CustomUser(AbstractUser):
@@ -23,14 +24,15 @@ class CustomUser(AbstractUser):
     def __str__(self):
         return self.username
 
-# Biometric Data Model
 class BiometricData(models.Model):
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name="biometric_data")
-    face_data = models.TextField(blank=True, null=True)  # Base64 Encoded Face Data
-    voice_data = models.TextField(blank=True, null=True)  # Base64 Encoded Voice Data
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    face_data = models.TextField()
+    voice_data = models.TextField()
 
     def __str__(self):
-        return f"Biometric Data of {self.user.username}"
+        return f"Biometric data for {self.user.username}"
+
+
 
 # Transaction Model
 class Transaction(models.Model):

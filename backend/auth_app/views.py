@@ -3,7 +3,6 @@ from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.mail import send_mail
 from django.conf import settings
 from django.utils.timezone import now
-
 from rest_framework.decorators import api_view, permission_classes  
 from rest_framework.permissions import IsAuthenticated, AllowAny  
 from rest_framework.response import Response  
@@ -21,6 +20,7 @@ import librosa
 import face_recognition 
 import wave
 import twilio
+import os
 
 # Normal Register
 @api_view(['POST'])
@@ -59,6 +59,9 @@ def login(request):
 
     return Response({"message": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED)
 
+# Set up MEDIA_URL and MEDIA_ROOT from settings
+MEDIA_URL = settings.MEDIA_URL
+MEDIA_ROOT = settings.MEDIA_ROOT
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -73,8 +76,9 @@ def biometric_register(request):
             return Response({"error": "Username, phone number, face data, and voice data are required"},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        # **Process Face Data**
+        # Process Face Data
         try:
+            # Read face image data
             face_image = cv2.imdecode(np.frombuffer(face_file.read(), np.uint8), cv2.IMREAD_COLOR)
             if face_image is None:
                 return Response({"error": "Invalid face image format"}, status=status.HTTP_400_BAD_REQUEST)
@@ -83,19 +87,29 @@ def biometric_register(request):
         except Exception as e:
             return Response({"error": f"Error processing face image: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # **Process Voice Data**
+        # Save the audio file (store as-is)
         try:
-            with wave.open(voice_file, 'rb') as wav_file:
-                voice_data = wav_file.readframes(wav_file.getnframes())
-            voice_base64 = base64.b64encode(voice_data).decode()
-        except Exception as e:
-            return Response({"error": f"Error processing audio: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+            # Assuming you want to store the audio file in its original format (MP3, WAV, etc.)
+            # You don't need to convert it, just save it
+            audio_file_path = os.path.join(MEDIA_ROOT, 'audio_files', voice_file.name)
+            
+            # Save the file
+            os.makedirs(os.path.dirname(audio_file_path), exist_ok=True)
+            with open(audio_file_path, 'wb') as f:
+                for chunk in voice_file.chunks():
+                    f.write(chunk)
+            
+            # Generate the URL for accessing the audio file
+            voice_file_url = os.path.join(MEDIA_URL, 'audio_files', voice_file.name)
 
-        # **Create User**
+        except Exception as e:
+            return Response({"error": f"Error saving audio file: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create User
         user = CustomUser.objects.create_user(username=username, phone_no=phone_no)
 
-        # **Save Biometric Data**
-        BiometricData.objects.create(user=user, face_data=face_base64, voice_data=voice_base64)
+        # Save Biometric Data with the face data and audio file URL
+        BiometricData.objects.create(user=user, face_data=face_base64, voice_data=voice_file_url)
 
         return Response({"message": "Biometric registration successful"}, status=status.HTTP_201_CREATED)
 

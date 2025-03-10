@@ -174,3 +174,9 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = "tradesupply07@gmail.com"  # Replace with your actual email
 EMAIL_HOST_PASSWORD = "hlgw jnwz lkqj deuq"  # Use the generated App Password
 EMAIL_USE_SSL = False
+
+# settings.py
+import os
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
