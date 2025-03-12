@@ -179,4 +179,5 @@ EMAIL_USE_SSL = False
 import os
 
 MEDIA_URL = '/media/'
+FERNET_KEY = b'UGJZNz7PTdDOpsp721YvcCmzjAmg1_rxb8r8Q_MwyV0='
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
